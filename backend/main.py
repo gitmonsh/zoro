@@ -2,6 +2,7 @@ import json
 import platform
 import random
 import subprocess
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
@@ -46,7 +47,9 @@ app.add_middleware(
 )
 
 BASE_DIR = Path(__file__).parent
+PROJECT_DIR = BASE_DIR.parent
 MEMORY_FILE = BASE_DIR / "memories.json"
+SCREENSHOT_DIR = PROJECT_DIR / "screenshots"
 
 current_status = Status(
     state=AssistantState.OFF,
@@ -98,9 +101,53 @@ def add_memory(text: str):
     return memory
 
 
+def capture_screen():
+    SCREENSHOT_DIR.mkdir(exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    screenshot_path = SCREENSHOT_DIR / f"screen-{timestamp}.png"
+
+    if platform.system() != "Darwin":
+        return {
+            "success": False,
+            "message": "Screen capture is currently only set up for macOS.",
+            "path": None
+        }
+
+    result = subprocess.run(
+        ["screencapture", "-x", str(screenshot_path)],
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode != 0:
+        return {
+            "success": False,
+            "message": "Screen capture failed. Check macOS Screen Recording permission.",
+            "path": None
+        }
+
+    return {
+        "success": True,
+        "message": "Screenshot captured locally.",
+        "path": str(screenshot_path)
+    }
+
+
 def build_answer(question_text: str):
     question = question_text.lower().strip()
     opener = random.choice(thinking_phrases)
+
+    if "screen" in question:
+        capture = capture_screen()
+
+        if capture["success"]:
+            return (
+                f"{opener} "
+                "I took a temporary screenshot locally. Next we'll add OCR so I can actually read and explain it."
+            )
+
+        return capture["message"]
 
     if "what do you remember" in question:
         memories = load_memories()
@@ -227,3 +274,8 @@ def remember(request: MemoryRequest):
     memory = add_memory(request.text)
     speak(f"Got it. I'll remember that {request.text}")
     return memory
+
+
+@app.post("/screen/capture")
+def screen_capture():
+    return capture_screen()
