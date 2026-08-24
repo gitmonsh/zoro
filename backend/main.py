@@ -1,7 +1,9 @@
+import json
 import platform
 import random
 import subprocess
 from enum import Enum
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +31,10 @@ class QuestionRequest(BaseModel):
     question: str
 
 
+class MemoryRequest(BaseModel):
+    text: str
+
+
 app = FastAPI(title="Zoro Backend")
 
 app.add_middleware(
@@ -38,6 +44,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+BASE_DIR = Path(__file__).parent
+MEMORY_FILE = BASE_DIR / "memories.json"
 
 current_status = Status(
     state=AssistantState.OFF,
@@ -60,9 +69,57 @@ def speak(text: str):
         print(f"Zoro would say: {text}")
 
 
+def load_memories():
+    if not MEMORY_FILE.exists():
+        return []
+
+    with open(MEMORY_FILE, "r") as file:
+        content = file.read().strip()
+
+    if not content:
+        return []
+
+    return json.loads(content)
+
+
+def save_memories(memories):
+    with open(MEMORY_FILE, "w") as file:
+        json.dump(memories, file, indent=2)
+
+
+def add_memory(text: str):
+    memories = load_memories()
+    memory = {
+        "id": len(memories) + 1,
+        "text": text
+    }
+    memories.append(memory)
+    save_memories(memories)
+    return memory
+
+
 def build_answer(question_text: str):
     question = question_text.lower().strip()
     opener = random.choice(thinking_phrases)
+
+    if "what do you remember" in question:
+        memories = load_memories()
+
+        if not memories:
+            return "I don't have any memories saved yet."
+
+        memory_lines = [f"- {memory['text']}" for memory in memories]
+        return "Here's what I remember:\n" + "\n".join(memory_lines)
+
+    if "remember that" in question:
+        start_index = question.find("remember that") + len("remember that")
+        memory_text = question_text[start_index:].strip()
+
+        if not memory_text:
+            return "Tell me what you want me to remember."
+
+        add_memory(memory_text)
+        return f"Got it. I'll remember that {memory_text}"
 
     if "what can you do" in question or "what do you do" in question:
         return (
@@ -79,9 +136,7 @@ def build_answer(question_text: str):
         )
 
     if "hello" in question or "hi" in question:
-        return (
-            "Yo, I'm here. What are we working on?"
-        )
+        return "Yo, I'm here. What are we working on?"
 
     return (
         f"{opener} "
@@ -158,3 +213,17 @@ def ask_zoro(request: QuestionRequest):
     return {
         "answer": answer
     }
+
+
+@app.get("/memories")
+def get_memories():
+    return {
+        "memories": load_memories()
+    }
+
+
+@app.post("/memories")
+def remember(request: MemoryRequest):
+    memory = add_memory(request.text)
+    speak(f"Got it. I'll remember that {request.text}")
+    return memory
