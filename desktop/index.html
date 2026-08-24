@@ -38,6 +38,7 @@
       border-radius: 8px;
       padding: 10px 14px;
       margin-right: 8px;
+      margin-bottom: 8px;
       cursor: pointer;
     }
 
@@ -57,13 +58,20 @@
       box-sizing: border-box;
     }
 
-    .answer {
+    .answer,
+    .memories {
       white-space: pre-wrap;
       background: #f0f2f5;
       border-radius: 8px;
       margin-top: 16px;
       padding: 12px;
       min-height: 20px;
+    }
+
+    .section-title {
+      margin-top: 24px;
+      margin-bottom: 8px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -84,6 +92,12 @@
     <button onclick="askZoro()">Ask Zoro</button>
 
     <div class="answer" id="answer"></div>
+
+    <div class="section-title">Memory</div>
+    <button onclick="showMemories()">Show Memories</button>
+    <div class="memories" id="memories">
+      No memories loaded yet.
+    </div>
   </div>
 
   <script>
@@ -127,6 +141,24 @@
 
       document.getElementById("answer").innerText = data.answer;
       updateStatus();
+    }
+
+    async function showMemories() {
+      const res = await fetch(`${API}/memories`);
+      const data = await res.json();
+
+      if (data.memories.length === 0) {
+        document.getElementById("memories").innerText =
+          "Zoro does not remember anything yet.";
+        return;
+      }
+
+      const memoryText = data.memories
+        .map(memory => `- ${memory.text}`)
+        .join("\n");
+
+      document.getElementById("memories").innerText =
+        `Zoro remembers:\n${memoryText}`;
     }
 
     updateStatus();
