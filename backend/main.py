@@ -6,8 +6,10 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+import pytesseract
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image
 from pydantic import BaseModel
 
 
@@ -111,7 +113,8 @@ def capture_screen():
         return {
             "success": False,
             "message": "Screen capture is currently only set up for macOS.",
-            "path": None
+            "path": None,
+            "text": ""
         }
 
     result = subprocess.run(
@@ -124,14 +127,65 @@ def capture_screen():
         return {
             "success": False,
             "message": "Screen capture failed. Check macOS Screen Recording permission.",
-            "path": None
+            "path": None,
+            "text": ""
         }
+
+    image = Image.open(screenshot_path)
+    extracted_text = pytesseract.image_to_string(image).strip()
 
     return {
         "success": True,
-        "message": "Screenshot captured locally.",
-        "path": str(screenshot_path)
+        "message": "Screenshot captured and read locally.",
+        "path": str(screenshot_path),
+        "text": extracted_text
     }
+
+
+def summarize_screen_text(text: str):
+    lower_text = text.lower()
+    observations = []
+
+    if "main.py" in lower_text or "fastapi" in lower_text:
+        observations.append("VS Code is open, and it looks like you're working on the Python backend.")
+
+    if "index.html" in lower_text:
+        observations.append("I can see the dashboard file, index.html.")
+
+    if "readme.md" in lower_text:
+        observations.append("Your README file is visible.")
+
+    if "project_summary.md" in lower_text:
+        observations.append("Your project summary document is visible.")
+
+    if "memories.json" in lower_text or "memories" in lower_text:
+        observations.append("Your local memory file or memory code is visible.")
+
+    if "backend" in lower_text:
+        observations.append("The backend folder is visible.")
+
+    if "desktop" in lower_text:
+        observations.append("The desktop dashboard folder is visible.")
+
+    if "github" in lower_text:
+        observations.append("GitHub appears to be open in the browser.")
+
+    if "zoro" in lower_text:
+        observations.append("This looks like your Zoro project workspace.")
+
+    if observations:
+        return " ".join(observations)
+
+    clean_text = " ".join(text.split())
+    preview = clean_text[:250]
+
+    if preview:
+        return (
+            "I can read some text from the screen, but I can't summarize it clearly yet. "
+            f"Some visible text is: {preview}"
+        )
+
+    return "I took a screenshot locally, but I couldn't read useful text from it yet."
 
 
 def build_answer(question_text: str):
@@ -141,13 +195,12 @@ def build_answer(question_text: str):
     if "screen" in question:
         capture = capture_screen()
 
-        if capture["success"]:
-            return (
-                f"{opener} "
-                "I took a temporary screenshot locally. Next we'll add OCR so I can actually read and explain it."
-            )
+        if not capture["success"]:
+            return capture["message"]
 
-        return capture["message"]
+        summary = summarize_screen_text(capture["text"])
+
+        return f"{opener} {summary}"
 
     if "what do you remember" in question:
         memories = load_memories()
