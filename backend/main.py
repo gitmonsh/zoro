@@ -1,4 +1,5 @@
 import platform
+import random
 import subprocess
 from enum import Enum
 
@@ -23,12 +24,24 @@ class SpeakRequest(BaseModel):
     text: str
 
 
+class QuestionRequest(BaseModel):
+    question: str
+
+
 app = FastAPI(title="Zoro Backend")
 
 current_status = Status(
     state=AssistantState.OFF,
     message="Zoro is off."
 )
+
+thinking_phrases = [
+    "Umm, hold up, lemme check.",
+    "Bet, give me a sec.",
+    "Okay, one sec.",
+    "Hmm, I'm looking at it.",
+    "Got you, checking now.",
+]
 
 
 def speak(text: str):
@@ -84,3 +97,32 @@ def stop_zoro():
 def speak_text(request: SpeakRequest):
     speak(request.text)
     return {"spoken": request.text}
+
+
+@app.post("/ask")
+def ask_zoro(request: QuestionRequest):
+    global current_status
+
+    current_status = Status(
+        state=AssistantState.THINKING,
+        message="Zoro is thinking."
+    )
+
+    opener = random.choice(thinking_phrases)
+    answer = (
+        f"{opener} "
+        f"You asked: {request.question}. "
+        "Right now I'm still learning, but soon I'll connect this to screen vision, memory, and local AI."
+    )
+
+    speak(answer)
+
+    current_status = Status(
+        state=AssistantState.CONVERSATION,
+        message="Conversation active."
+    )
+
+    return {
+        "question": request.question,
+        "answer": answer
+    }
