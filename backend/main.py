@@ -4,6 +4,7 @@ import subprocess
 from enum import Enum
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 
@@ -30,6 +31,14 @@ class QuestionRequest(BaseModel):
 
 app = FastAPI(title="Zoro Backend")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 current_status = Status(
     state=AssistantState.OFF,
     message="Zoro is off."
@@ -49,6 +58,36 @@ def speak(text: str):
         subprocess.Popen(["say", text])
     else:
         print(f"Zoro would say: {text}")
+
+
+def build_answer(question_text: str):
+    question = question_text.lower().strip()
+    opener = random.choice(thinking_phrases)
+
+    if "what can you do" in question or "what do you do" in question:
+        return (
+            f"{opener} "
+            "I can help with screen questions, coding, web search, local memory, "
+            "and simple laptop tasks. I'm still early right now, but that's the direction."
+        )
+
+    if "who are you" in question:
+        return (
+            f"{opener} "
+            "I'm Zoro, your local-first desktop assistant. I'm built to help you work on your laptop "
+            "while keeping your data private."
+        )
+
+    if "hello" in question or "hi" in question:
+        return (
+            "Yo, I'm here. What are we working on?"
+        )
+
+    return (
+        f"{opener} "
+        "I get what you're asking. I'm still in my early version, so I can't fully answer that yet, "
+        "but soon I'll connect this to local AI, screen vision, memory, and web search."
+    )
 
 
 @app.get("/")
@@ -108,13 +147,7 @@ def ask_zoro(request: QuestionRequest):
         message="Zoro is thinking."
     )
 
-    opener = random.choice(thinking_phrases)
-    answer = (
-        f"{opener} "
-        f"You asked: {request.question}. "
-        "Right now I'm still learning, but soon I'll connect this to screen vision, memory, and local AI."
-    )
-
+    answer = build_answer(request.question)
     speak(answer)
 
     current_status = Status(
@@ -123,6 +156,5 @@ def ask_zoro(request: QuestionRequest):
     )
 
     return {
-        "question": request.question,
         "answer": answer
     }
