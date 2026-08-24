@@ -1,4 +1,7 @@
+import platform
+import subprocess
 from enum import Enum
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -16,12 +19,23 @@ class Status(BaseModel):
     message: str
 
 
+class SpeakRequest(BaseModel):
+    text: str
+
+
 app = FastAPI(title="Zoro Backend")
 
 current_status = Status(
     state=AssistantState.OFF,
     message="Zoro is off."
 )
+
+
+def speak(text: str):
+    if platform.system() == "Darwin":
+        subprocess.Popen(["say", text])
+    else:
+        print(f"Zoro would say: {text}")
 
 
 @app.get("/")
@@ -51,6 +65,7 @@ def wake_zoro():
         state=AssistantState.CONVERSATION,
         message="Yeah, I'm here."
     )
+    speak("Yeah, I'm here.")
     return current_status
 
 
@@ -61,4 +76,11 @@ def stop_zoro():
         state=AssistantState.OFF,
         message="Zoro is off."
     )
+    speak("Zoro stopped.")
     return current_status
+
+
+@app.post("/speak")
+def speak_text(request: SpeakRequest):
+    speak(request.text)
+    return {"spoken": request.text}
