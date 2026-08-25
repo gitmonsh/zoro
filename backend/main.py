@@ -2,6 +2,8 @@ import json
 import platform
 import random
 import subprocess
+import urllib.error
+import urllib.request
 import webbrowser
 from datetime import datetime
 from enum import Enum
@@ -54,6 +56,8 @@ BASE_DIR = Path(__file__).parent
 PROJECT_DIR = BASE_DIR.parent
 MEMORY_FILE = BASE_DIR / "memories.json"
 SCREENSHOT_DIR = PROJECT_DIR / "screenshots"
+OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
+OLLAMA_MODEL = "llama3.2:3b"
 
 current_status = Status(
     state=AssistantState.OFF,
@@ -68,7 +72,6 @@ thinking_phrases = [
     "Got you, checking now.",
 ]
 
-
 KNOWN_SITES = {
     "youtube": "https://www.youtube.com",
     "google": "https://www.google.com",
@@ -79,12 +82,51 @@ KNOWN_SITES = {
     "stack overflow": "https://stackoverflow.com",
 }
 
+ZORO_SYSTEM_PROMPT = """
+You are Zoro, Monish's local-first desktop assistant.
+You are helpful, casual, and natural.
+Use light Gen Z phrasing sometimes, but do not overdo slang.
+Do not talk like a pirate.
+Do not pretend to access tools unless the app already did it.
+Keep answers short unless the user asks for detail.
+Be useful first, casual second.
+"""
+
 
 def speak(text: str):
     if platform.system() == "Darwin":
         subprocess.Popen(["say", text])
     else:
         print(f"Zoro would say: {text}")
+
+
+def ask_local_llm(question_text: str):
+    prompt = f"{ZORO_SYSTEM_PROMPT}\n\nUser: {question_text}\nZoro:"
+
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False
+    }
+
+    data = json.dumps(payload).encode("utf-8")
+
+    request = urllib.request.Request(
+        OLLAMA_URL,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            return result.get("response", "").strip()
+    except urllib.error.URLError:
+        return (
+            "I can't reach my local LLM right now. Make sure Ollama is running with "
+            "`ollama serve`."
+        )
 
 
 def load_memories():
@@ -252,7 +294,7 @@ def build_answer(question_text: str):
         if result:
             return result
 
-        return f"I don't know that site yet, but I can search it instead."
+        return "I don't know that site yet, but I can search it instead."
 
     if question.startswith("search "):
         search_query = question_text[7:].strip()
@@ -299,7 +341,7 @@ def build_answer(question_text: str):
         return (
             f"{opener} "
             "I can help with screen questions, coding, web search, local memory, "
-            "and simple laptop tasks. I'm still early right now, but that's the direction."
+            "and simple laptop tasks. I'm also connected to a local LLM now, so I can answer more naturally."
         )
 
     if "who are you" in question:
@@ -312,11 +354,7 @@ def build_answer(question_text: str):
     if "hello" in question or "hi" in question:
         return "Yo, I'm here. What are we working on?"
 
-    return (
-        f"{opener} "
-        "I get what you're asking. I'm still in my early version, so I can't fully answer that yet, "
-        "but soon I'll connect this to local AI, screen vision, memory, and web search."
-    )
+    return ask_local_llm(question_text)
 
 
 @app.get("/")
