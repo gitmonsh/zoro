@@ -425,7 +425,7 @@
       if (state === "waiting") {
         orb.classList.add("waiting");
         modeLabel.innerText = 'Mode: Waiting for "Zoro"';
-        question.placeholder = 'Say or click Wake, then ask your question...';
+        question.placeholder = 'Say "Zoro" or click Wake...';
         return;
       }
 
@@ -499,6 +499,45 @@
       updateStatus();
       showMemories();
       logAction(`Asked: ${question}`);
+    }
+
+    async function handleVoiceTranscript(transcript) {
+      const cleanedTranscript = transcript.trim();
+      const lowerTranscript = cleanedTranscript.toLowerCase();
+
+      logAction(`Heard voice: ${cleanedTranscript}`);
+
+      if (lowerTranscript === "zoro") {
+        await wakeZoro();
+        document.getElementById("voiceStatus").innerText =
+          'Voice: heard wake word "Zoro"';
+        return;
+      }
+
+      if (lowerTranscript.startsWith("zoro ")) {
+        const command = cleanedTranscript.slice(5).trim();
+
+        await wakeZoro();
+
+        if (!command) {
+          document.getElementById("voiceStatus").innerText =
+            'Voice: heard wake word "Zoro"';
+          return;
+        }
+
+        document.getElementById("question").value = command;
+        document.getElementById("voiceStatus").innerText =
+          `Voice: heard "${cleanedTranscript}"`;
+
+        askZoro();
+        return;
+      }
+
+      document.getElementById("question").value = cleanedTranscript;
+      document.getElementById("voiceStatus").innerText =
+        `Voice: heard "${cleanedTranscript}"`;
+
+      askZoro();
     }
 
     async function showMemories() {
@@ -583,13 +622,7 @@
 
       recognition.onresult = function(event) {
         const transcript = event.results[0][0].transcript;
-
-        document.getElementById("question").value = transcript;
-        document.getElementById("voiceStatus").innerText =
-          `Voice: heard "${transcript}"`;
-
-        logAction(`Heard voice: ${transcript}`);
-        askZoro();
+        handleVoiceTranscript(transcript);
       };
 
       recognition.onerror = function(event) {
