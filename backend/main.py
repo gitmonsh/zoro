@@ -137,6 +137,10 @@ User: {question_text}
 Zoro:
 """
 
+    return call_ollama(prompt)
+
+
+def call_ollama(prompt: str):
     payload = {
         "model": OLLAMA_MODEL,
         "prompt": prompt,
@@ -259,49 +263,25 @@ def capture_screen():
 
 
 def summarize_screen_text(text: str):
-    lower_text = text.lower()
-    observations = []
-
-    if "main.py" in lower_text or "fastapi" in lower_text:
-        observations.append("VS Code is open, and it looks like you're working on the Python backend.")
-
-    if "index.html" in lower_text:
-        observations.append("I can see the dashboard file, index.html.")
-
-    if "readme.md" in lower_text:
-        observations.append("Your README file is visible.")
-
-    if "project_summary.md" in lower_text:
-        observations.append("Your project summary document is visible.")
-
-    if "memories.json" in lower_text or "memories" in lower_text:
-        observations.append("Your local memory file or memory code is visible.")
-
-    if "backend" in lower_text:
-        observations.append("The backend folder is visible.")
-
-    if "desktop" in lower_text:
-        observations.append("The desktop dashboard folder is visible.")
-
-    if "github" in lower_text:
-        observations.append("GitHub appears to be open in the browser.")
-
-    if "zoro" in lower_text:
-        observations.append("This looks like your Zoro project workspace.")
-
-    if observations:
-        return " ".join(observations)
-
     clean_text = " ".join(text.split())
-    preview = clean_text[:250]
 
-    if preview:
-        return (
-            "I can read some text from the screen, but I can't summarize it clearly yet. "
-            f"Some visible text is: {preview}"
-        )
+    if not clean_text:
+        return "I took a screenshot locally, but I couldn't read useful text from it yet."
 
-    return "I took a screenshot locally, but I couldn't read useful text from it yet."
+    prompt = f"""
+{ZORO_SYSTEM_PROMPT}
+
+The app captured a screenshot locally and extracted this OCR text from the screen:
+
+{clean_text[:2500]}
+
+Summarize what appears to be on the user's screen in 1-3 short sentences.
+Be honest that this is based on OCR text, not perfect vision.
+Do not read out random OCR junk.
+Zoro:
+"""
+
+    return call_ollama(prompt)
 
 
 def build_answer(question_text: str):
