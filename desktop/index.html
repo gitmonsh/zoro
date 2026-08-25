@@ -3,30 +3,96 @@
 <head>
   <title>Zoro</title>
   <style>
+    :root {
+      --bg: #edf1f7;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #526172;
+      --blue: #2f7cf6;
+      --dark: #17202a;
+      --danger: #c0392b;
+      --border: #d9dee8;
+    }
+
     body {
       font-family: Arial, sans-serif;
-      background: #edf1f7;
+      background:
+        radial-gradient(circle at 80% 85%, rgba(47, 124, 246, 0.16), transparent 28%),
+        radial-gradient(circle at 20% 20%, rgba(23, 32, 42, 0.08), transparent 24%),
+        var(--bg);
       margin: 0;
       min-height: 100vh;
-      color: #17202a;
+      color: var(--text);
+      overflow: hidden;
     }
 
     .screen {
-      display: flex;
-      justify-content: flex-end;
-      align-items: flex-end;
       min-height: 100vh;
-      padding: 28px;
-      box-sizing: border-box;
+      position: relative;
+    }
+
+    .bubble {
+      position: fixed;
+      right: 28px;
+      bottom: 28px;
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      border: none;
+      background:
+        radial-gradient(circle at 35% 28%, #79aaff, var(--blue) 55%, #1651c8);
+      box-shadow:
+        0 18px 45px rgba(47, 124, 246, 0.35),
+        0 0 0 10px rgba(47, 124, 246, 0.10);
+      cursor: pointer;
+      z-index: 10;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .bubble:hover {
+      transform: translateY(-4px) scale(1.04);
+      box-shadow:
+        0 22px 60px rgba(47, 124, 246, 0.45),
+        0 0 0 12px rgba(47, 124, 246, 0.12);
+    }
+
+    .bubble::before,
+    .bubble::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      inset: -9px;
+      border: 1px solid rgba(47, 124, 246, 0.25);
+      animation: ripple 2.4s infinite;
+    }
+
+    .bubble::after {
+      animation-delay: 1.2s;
     }
 
     .assistant {
-      width: 380px;
-      background: white;
-      border: 1px solid #d9dee8;
-      border-radius: 14px;
-      box-shadow: 0 18px 45px rgba(23, 32, 42, 0.18);
+      position: fixed;
+      right: 28px;
+      bottom: 118px;
+      width: 390px;
+      max-height: calc(100vh - 150px);
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(23, 32, 42, 0.22);
       padding: 18px;
+      opacity: 0;
+      transform: translateY(22px) scale(0.96);
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .assistant.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
     }
 
     .top {
@@ -37,15 +103,17 @@
     }
 
     .orb {
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: #2f7cf6;
+      background:
+        radial-gradient(circle at 35% 28%, #79aaff, var(--blue) 55%, #1651c8);
       box-shadow: 0 0 0 8px rgba(47, 124, 246, 0.12);
+      flex: 0 0 auto;
     }
 
     .orb.listening {
-      animation: pulse 1.5s infinite;
+      animation: breathe 1.5s infinite;
     }
 
     .title h1 {
@@ -54,15 +122,22 @@
     }
 
     .title p {
-      color: #526172;
+      color: var(--muted);
       font-size: 13px;
       margin: 2px 0 0;
+    }
+
+    .close-button {
+      margin-left: auto;
+      background: #eef3ff;
+      color: var(--text);
+      padding: 8px 10px;
     }
 
     .status {
       padding: 10px;
       background: #eef3ff;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 14px;
       margin-bottom: 12px;
     }
@@ -75,21 +150,23 @@
     }
 
     button {
-      background: #17202a;
+      background: var(--dark);
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 9px 12px;
       cursor: pointer;
       font-size: 14px;
+      transition: transform 0.15s ease, background 0.15s ease;
     }
 
     button:hover {
       background: #2a3a4a;
+      transform: translateY(-1px);
     }
 
     .voice-button {
-      background: #2f7cf6;
+      background: var(--blue);
     }
 
     .voice-button:hover {
@@ -97,7 +174,7 @@
     }
 
     .danger-button {
-      background: #c0392b;
+      background: var(--danger);
     }
 
     .danger-button:hover {
@@ -109,19 +186,25 @@
       height: 82px;
       margin-top: 8px;
       padding: 10px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid #cbd3df;
       font-family: Arial, sans-serif;
       font-size: 14px;
       box-sizing: border-box;
       resize: vertical;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(47, 124, 246, 0.12);
     }
 
     .answer,
     .memories {
       white-space: pre-wrap;
       background: #f4f6f9;
-      border-radius: 8px;
+      border-radius: 10px;
       margin-top: 12px;
       padding: 10px;
       min-height: 20px;
@@ -138,7 +221,7 @@
     }
 
     .hint {
-      color: #526172;
+      color: var(--muted);
       font-size: 13px;
       margin-top: 2px;
     }
@@ -146,7 +229,7 @@
     .memory-item {
       background: white;
       border: 1px solid #ddd;
-      border-radius: 8px;
+      border-radius: 10px;
       margin-bottom: 8px;
       padding: 10px;
     }
@@ -155,30 +238,45 @@
       margin-bottom: 8px;
     }
 
-    @keyframes pulse {
+    @keyframes ripple {
       0% {
-        box-shadow: 0 0 0 0 rgba(47, 124, 246, 0.35);
-      }
-
-      70% {
-        box-shadow: 0 0 0 14px rgba(47, 124, 246, 0);
+        opacity: 0.45;
+        transform: scale(0.85);
       }
 
       100% {
-        box-shadow: 0 0 0 0 rgba(47, 124, 246, 0);
+        opacity: 0;
+        transform: scale(1.45);
+      }
+    }
+
+    @keyframes breathe {
+      0% {
+        box-shadow: 0 0 0 4px rgba(47, 124, 246, 0.18);
+      }
+
+      50% {
+        box-shadow: 0 0 0 12px rgba(47, 124, 246, 0.04);
+      }
+
+      100% {
+        box-shadow: 0 0 0 4px rgba(47, 124, 246, 0.18);
       }
     }
   </style>
 </head>
 <body>
   <div class="screen">
-    <div class="assistant">
+    <button class="bubble" onclick="toggleAssistant()" aria-label="Toggle Zoro"></button>
+
+    <div class="assistant open" id="assistant">
       <div class="top">
         <div class="orb" id="orb"></div>
         <div class="title">
           <h1>Zoro</h1>
           <p>Local-first desktop assistant</p>
         </div>
+        <button class="close-button" onclick="toggleAssistant()">Hide</button>
       </div>
 
       <div class="status" id="status">
@@ -218,6 +316,10 @@
 
   <script>
     const API = "http://127.0.0.1:8000";
+
+    function toggleAssistant() {
+      document.getElementById("assistant").classList.toggle("open");
+    }
 
     function setOrbState(state) {
       const orb = document.getElementById("orb");
