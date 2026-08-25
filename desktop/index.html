@@ -8,6 +8,8 @@
       --text: #17202a;
       --muted: #526172;
       --blue: #2f7cf6;
+      --green: #22a06b;
+      --gray: #9aa7b8;
       --dark: #17202a;
       --danger: #c0392b;
       --border: #d9dee8;
@@ -42,7 +44,7 @@
       box-shadow: 0 18px 45px rgba(47, 124, 246, 0.35), 0 0 0 10px rgba(47, 124, 246, 0.10);
       cursor: pointer;
       z-index: 10;
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
     }
 
     .bubble:hover {
@@ -100,13 +102,25 @@
       width: 44px;
       height: 44px;
       border-radius: 50%;
-      background: radial-gradient(circle at 35% 28%, #79aaff, var(--blue) 55%, #1651c8);
-      box-shadow: 0 0 0 8px rgba(47, 124, 246, 0.12);
+      background: var(--gray);
+      box-shadow: 0 0 0 8px rgba(154, 167, 184, 0.14);
       flex: 0 0 auto;
+      transition: background 0.25s ease, box-shadow 0.25s ease;
     }
 
-    .orb.listening {
+    .orb.waiting {
+      background: var(--blue);
       animation: breathe 1.5s infinite;
+    }
+
+    .orb.conversation {
+      background: var(--green);
+      animation: breatheGreen 1.5s infinite;
+    }
+
+    .orb.thinking {
+      background: #8e44ad;
+      animation: breathePurple 1.2s infinite;
     }
 
     .title h1 {
@@ -118,6 +132,17 @@
       color: var(--muted);
       font-size: 13px;
       margin: 2px 0 0;
+    }
+
+    .mode {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eef3ff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: bold;
     }
 
     .close-button {
@@ -256,6 +281,34 @@
         box-shadow: 0 0 0 4px rgba(47, 124, 246, 0.18);
       }
     }
+
+    @keyframes breatheGreen {
+      0% {
+        box-shadow: 0 0 0 4px rgba(34, 160, 107, 0.20);
+      }
+
+      50% {
+        box-shadow: 0 0 0 12px rgba(34, 160, 107, 0.05);
+      }
+
+      100% {
+        box-shadow: 0 0 0 4px rgba(34, 160, 107, 0.20);
+      }
+    }
+
+    @keyframes breathePurple {
+      0% {
+        box-shadow: 0 0 0 4px rgba(142, 68, 173, 0.20);
+      }
+
+      50% {
+        box-shadow: 0 0 0 12px rgba(142, 68, 173, 0.05);
+      }
+
+      100% {
+        box-shadow: 0 0 0 4px rgba(142, 68, 173, 0.20);
+      }
+    }
   </style>
 </head>
 <body>
@@ -268,6 +321,7 @@
         <div class="title">
           <h1>Zoro</h1>
           <p>Local-first desktop assistant</p>
+          <span class="mode" id="modeLabel">Mode: Off</span>
         </div>
         <button class="close-button" onclick="toggleAssistant()">Hide</button>
       </div>
@@ -282,7 +336,7 @@
         <button onclick="stopZoro()">Stop</button>
       </div>
 
-      <textarea id="question" placeholder="Ask Zoro something..."></textarea>
+      <textarea id="question" placeholder="Start Zoro, then ask something..."></textarea>
 
       <div class="button-row">
         <button class="voice-button" onclick="startVoiceInput()">Listen</button>
@@ -355,14 +409,41 @@
       showActions();
     }
 
-    function setOrbState(state) {
+    function setVisualState(state) {
       const orb = document.getElementById("orb");
+      const modeLabel = document.getElementById("modeLabel");
+      const question = document.getElementById("question");
 
-      if (state === "waiting" || state === "conversation" || state === "thinking") {
-        orb.classList.add("listening");
-      } else {
-        orb.classList.remove("listening");
+      orb.className = "orb";
+
+      if (state === "off") {
+        modeLabel.innerText = "Mode: Off";
+        question.placeholder = "Click Start to activate Zoro...";
+        return;
       }
+
+      if (state === "waiting") {
+        orb.classList.add("waiting");
+        modeLabel.innerText = 'Mode: Waiting for "Zoro"';
+        question.placeholder = 'Say or click Wake, then ask your question...';
+        return;
+      }
+
+      if (state === "conversation") {
+        orb.classList.add("conversation");
+        modeLabel.innerText = "Mode: Conversation active";
+        question.placeholder = "Ask naturally. No need to say Zoro again...";
+        return;
+      }
+
+      if (state === "thinking") {
+        orb.classList.add("thinking");
+        modeLabel.innerText = "Mode: Thinking";
+        question.placeholder = "Zoro is thinking...";
+        return;
+      }
+
+      modeLabel.innerText = `Mode: ${state}`;
     }
 
     async function updateStatus() {
@@ -372,7 +453,7 @@
       document.getElementById("status").innerText =
         `Status: ${data.state} - ${data.message}`;
 
-      setOrbState(data.state);
+      setVisualState(data.state);
     }
 
     async function startZoro() {
@@ -401,6 +482,8 @@
           "Ask me something first.";
         return;
       }
+
+      setVisualState("thinking");
 
       const res = await fetch(`${API}/ask`, {
         method: "POST",
@@ -493,7 +576,7 @@
       document.getElementById("voiceStatus").innerText =
         "Voice: listening...";
 
-      setOrbState("conversation");
+      setVisualState("conversation");
       logAction("Started voice input");
 
       recognition.start();
