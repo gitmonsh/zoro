@@ -66,7 +66,7 @@ current_status = Status(
 
 thinking_phrases = [
     "Umm, hold up, lemme check.",
-    "Bet, give me a sec.",
+    "Give me a sec.",
     "Okay, one sec.",
     "Hmm, I'm looking at it.",
     "Got you, checking now.",
@@ -85,7 +85,11 @@ KNOWN_SITES = {
 ZORO_SYSTEM_PROMPT = """
 You are Zoro, Monish's local-first desktop assistant.
 You are helpful, casual, and natural.
-Use light Gen Z phrasing sometimes, but do not overdo slang.
+Your style is chill and friendly, but not goofy.
+Use simple wording and short answers by default.
+Use light casual phrases only sometimes, such as "got you", "give me a sec", or "that makes sense".
+Avoid cringe or excessive slang.
+Do not use words like "bruh", "matey", "yo yo", "fam", or pirate-style speech.
 Do not talk like a pirate.
 Do not pretend to access tools unless the app already did it.
 Keep answers short unless the user asks for detail.
@@ -124,22 +128,6 @@ def format_memories_for_prompt():
     return "\n".join(memory_lines)
 
 
-def ask_local_llm(question_text: str):
-    memories_text = format_memories_for_prompt()
-
-    prompt = f"""
-{ZORO_SYSTEM_PROMPT}
-
-Saved memories:
-{memories_text}
-
-User: {question_text}
-Zoro:
-"""
-
-    return call_ollama(prompt)
-
-
 def call_ollama(prompt: str):
     payload = {
         "model": OLLAMA_MODEL,
@@ -165,6 +153,22 @@ def call_ollama(prompt: str):
             "I can't reach my local LLM right now. Make sure Ollama is running with "
             "`ollama serve`."
         )
+
+
+def ask_local_llm(question_text: str):
+    memories_text = format_memories_for_prompt()
+
+    prompt = f"""
+{ZORO_SYSTEM_PROMPT}
+
+Saved memories:
+{memories_text}
+
+User: {question_text}
+Zoro:
+"""
+
+    return call_ollama(prompt)
 
 
 def save_memories(memories):
@@ -342,7 +346,7 @@ def build_answer(question_text: str):
         return (
             f"{opener} "
             "I can help with screen questions, coding, web search, local memory, "
-            "and simple laptop tasks. I'm also connected to a local LLM now, so I can answer more naturally."
+            "and simple laptop tasks. I'm also connected to a local LLM, so I can answer more naturally."
         )
 
     if "who are you" in question:
@@ -353,7 +357,7 @@ def build_answer(question_text: str):
         )
 
     if "hello" in question or "hi" in question:
-        return "Yo, I'm here. What are we working on?"
+        return "Hey, I'm here. What are we working on?"
 
     return ask_local_llm(question_text)
 
