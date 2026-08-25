@@ -2,9 +2,11 @@ import json
 import platform
 import random
 import subprocess
+import webbrowser
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import pytesseract
 from fastapi import FastAPI
@@ -67,6 +69,17 @@ thinking_phrases = [
 ]
 
 
+KNOWN_SITES = {
+    "youtube": "https://www.youtube.com",
+    "google": "https://www.google.com",
+    "github": "https://github.com",
+    "gmail": "https://mail.google.com",
+    "chatgpt": "https://chatgpt.com",
+    "stackoverflow": "https://stackoverflow.com",
+    "stack overflow": "https://stackoverflow.com",
+}
+
+
 def speak(text: str):
     if platform.system() == "Darwin":
         subprocess.Popen(["say", text])
@@ -115,6 +128,32 @@ def delete_memory(memory_id: int):
 
 def delete_all_memories():
     save_memories([])
+
+
+def open_website(site_name: str):
+    site = site_name.lower().strip()
+
+    for name, url in KNOWN_SITES.items():
+        if name in site:
+            webbrowser.open(url)
+            return f"Opening {name}."
+
+    if "." in site:
+        url = site
+
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = "https://" + url
+
+        webbrowser.open(url)
+        return f"Opening {url}."
+
+    return None
+
+
+def search_web(query: str):
+    search_url = f"https://www.google.com/search?q={quote_plus(query)}"
+    webbrowser.open(search_url)
+    return f"I opened a web search for {query}."
 
 
 def capture_screen():
@@ -205,6 +244,23 @@ def summarize_screen_text(text: str):
 def build_answer(question_text: str):
     question = question_text.lower().strip()
     opener = random.choice(thinking_phrases)
+
+    if question.startswith("open "):
+        site_name = question_text[5:].strip()
+        result = open_website(site_name)
+
+        if result:
+            return result
+
+        return f"I don't know that site yet, but I can search it instead."
+
+    if question.startswith("search "):
+        search_query = question_text[7:].strip()
+
+        if not search_query:
+            return "Tell me what you want me to search."
+
+        return search_web(search_query)
 
     if "screen" in question:
         capture = capture_screen()
