@@ -5,30 +5,73 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f6fb;
+      background: #edf1f7;
       margin: 0;
-      padding: 40px;
+      min-height: 100vh;
       color: #17202a;
     }
 
-    .app {
-      max-width: 760px;
-      margin: 0 auto;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 24px;
+    .screen {
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-end;
+      min-height: 100vh;
+      padding: 28px;
+      box-sizing: border-box;
     }
 
-    h1 {
-      margin-top: 0;
+    .assistant {
+      width: 380px;
+      background: white;
+      border: 1px solid #d9dee8;
+      border-radius: 14px;
+      box-shadow: 0 18px 45px rgba(23, 32, 42, 0.18);
+      padding: 18px;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .orb {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #2f7cf6;
+      box-shadow: 0 0 0 8px rgba(47, 124, 246, 0.12);
+    }
+
+    .orb.listening {
+      animation: pulse 1.5s infinite;
+    }
+
+    .title h1 {
+      font-size: 22px;
+      margin: 0;
+    }
+
+    .title p {
+      color: #526172;
+      font-size: 13px;
+      margin: 2px 0 0;
     }
 
     .status {
-      padding: 12px;
+      padding: 10px;
       background: #eef3ff;
       border-radius: 8px;
-      margin-bottom: 16px;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
     }
 
     button {
@@ -36,10 +79,9 @@
       color: white;
       border: none;
       border-radius: 8px;
-      padding: 10px 14px;
-      margin-right: 8px;
-      margin-bottom: 8px;
+      padding: 9px 12px;
       cursor: pointer;
+      font-size: 14px;
     }
 
     button:hover {
@@ -64,36 +106,41 @@
 
     textarea {
       width: 100%;
-      height: 90px;
-      margin-top: 16px;
+      height: 82px;
+      margin-top: 8px;
       padding: 10px;
       border-radius: 8px;
-      border: 1px solid #ccc;
+      border: 1px solid #cbd3df;
       font-family: Arial, sans-serif;
-      font-size: 15px;
+      font-size: 14px;
       box-sizing: border-box;
+      resize: vertical;
     }
 
     .answer,
     .memories {
       white-space: pre-wrap;
-      background: #f0f2f5;
+      background: #f4f6f9;
       border-radius: 8px;
-      margin-top: 16px;
-      padding: 12px;
+      margin-top: 12px;
+      padding: 10px;
       min-height: 20px;
+      font-size: 14px;
+      max-height: 180px;
+      overflow-y: auto;
     }
 
     .section-title {
-      margin-top: 24px;
+      margin-top: 18px;
       margin-bottom: 8px;
       font-weight: bold;
+      font-size: 14px;
     }
 
     .hint {
       color: #526172;
-      font-size: 14px;
-      margin-top: 8px;
+      font-size: 13px;
+      margin-top: 2px;
     }
 
     .memory-item {
@@ -107,43 +154,80 @@
     .memory-text {
       margin-bottom: 8px;
     }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(47, 124, 246, 0.35);
+      }
+
+      70% {
+        box-shadow: 0 0 0 14px rgba(47, 124, 246, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(47, 124, 246, 0);
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="app">
-    <h1>Zoro</h1>
+  <div class="screen">
+    <div class="assistant">
+      <div class="top">
+        <div class="orb" id="orb"></div>
+        <div class="title">
+          <h1>Zoro</h1>
+          <p>Local-first desktop assistant</p>
+        </div>
+      </div>
 
-    <div class="status" id="status">
-      Status: loading...
-    </div>
+      <div class="status" id="status">
+        Status: loading...
+      </div>
 
-    <button onclick="startZoro()">Start Zoro</button>
-    <button onclick="wakeZoro()">Wake</button>
-    <button onclick="stopZoro()">Stop</button>
+      <div class="button-row">
+        <button onclick="startZoro()">Start</button>
+        <button onclick="wakeZoro()">Wake</button>
+        <button onclick="stopZoro()">Stop</button>
+      </div>
 
-    <textarea id="question" placeholder="Ask Zoro something..."></textarea>
-    <br><br>
+      <textarea id="question" placeholder="Ask Zoro something..."></textarea>
 
-    <button class="voice-button" onclick="startVoiceInput()">Start Listening</button>
-    <button onclick="askZoro()">Ask Zoro</button>
+      <div class="button-row">
+        <button class="voice-button" onclick="startVoiceInput()">Listen</button>
+        <button onclick="askZoro()">Ask</button>
+      </div>
 
-    <div class="hint" id="voiceStatus">
-      Voice status: idle
-    </div>
+      <div class="hint" id="voiceStatus">
+        Voice: idle
+      </div>
 
-    <div class="answer" id="answer"></div>
+      <div class="answer" id="answer"></div>
 
-    <div class="section-title">Memory</div>
-    <button onclick="showMemories()">Show Memories</button>
-    <button class="danger-button" onclick="deleteAllMemories()">Delete All Memories</button>
+      <div class="section-title">Memory</div>
+      <div class="button-row">
+        <button onclick="showMemories()">Show</button>
+        <button class="danger-button" onclick="deleteAllMemories()">Delete All</button>
+      </div>
 
-    <div class="memories" id="memories">
-      No memories loaded yet.
+      <div class="memories" id="memories">
+        No memories loaded yet.
+      </div>
     </div>
   </div>
 
   <script>
     const API = "http://127.0.0.1:8000";
+
+    function setOrbState(state) {
+      const orb = document.getElementById("orb");
+
+      if (state === "waiting" || state === "conversation" || state === "thinking") {
+        orb.classList.add("listening");
+      } else {
+        orb.classList.remove("listening");
+      }
+    }
 
     async function updateStatus() {
       const res = await fetch(`${API}/status`);
@@ -151,6 +235,8 @@
 
       document.getElementById("status").innerText =
         `Status: ${data.state} - ${data.message}`;
+
+      setOrbState(data.state);
     }
 
     async function startZoro() {
@@ -253,7 +339,7 @@
 
       if (!SpeechRecognition) {
         document.getElementById("voiceStatus").innerText =
-          "Voice status: speech recognition is not supported in this browser. Try Chrome.";
+          "Voice: speech recognition is not supported in this browser. Try Chrome.";
         return;
       }
 
@@ -263,7 +349,9 @@
       recognition.continuous = false;
 
       document.getElementById("voiceStatus").innerText =
-        "Voice status: listening...";
+        "Voice: listening...";
+
+      setOrbState("conversation");
 
       recognition.start();
 
@@ -272,23 +360,25 @@
 
         document.getElementById("question").value = transcript;
         document.getElementById("voiceStatus").innerText =
-          `Voice status: heard "${transcript}"`;
+          `Voice: heard "${transcript}"`;
 
         askZoro();
       };
 
       recognition.onerror = function(event) {
         document.getElementById("voiceStatus").innerText =
-          `Voice status: error - ${event.error}`;
+          `Voice: error - ${event.error}`;
       };
 
       recognition.onend = function() {
         const current = document.getElementById("voiceStatus").innerText;
 
-        if (current === "Voice status: listening...") {
+        if (current === "Voice: listening...") {
           document.getElementById("voiceStatus").innerText =
-            "Voice status: stopped listening";
+            "Voice: stopped listening";
         }
+
+        updateStatus();
       };
     }
 
