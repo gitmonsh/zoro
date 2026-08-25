@@ -103,6 +103,20 @@ def add_memory(text: str):
     return memory
 
 
+def delete_memory(memory_id: int):
+    memories = load_memories()
+    updated_memories = [
+        memory for memory in memories
+        if memory["id"] != memory_id
+    ]
+    save_memories(updated_memories)
+    return len(memories) != len(updated_memories)
+
+
+def delete_all_memories():
+    save_memories([])
+
+
 def capture_screen():
     SCREENSHOT_DIR.mkdir(exist_ok=True)
 
@@ -210,6 +224,10 @@ def build_answer(question_text: str):
 
         memory_lines = [f"- {memory['text']}" for memory in memories]
         return "Here's what I remember:\n" + "\n".join(memory_lines)
+
+    if "forget everything" in question or "delete all memories" in question:
+        delete_all_memories()
+        return "Done. I deleted all saved memories."
 
     if "remember that" in question:
         start_index = question.find("remember that") + len("remember that")
@@ -327,6 +345,22 @@ def remember(request: MemoryRequest):
     memory = add_memory(request.text)
     speak(f"Got it. I'll remember that {request.text}")
     return memory
+
+
+@app.delete("/memories/{memory_id}")
+def remove_memory(memory_id: int):
+    deleted = delete_memory(memory_id)
+
+    if deleted:
+        return {"deleted": True, "message": "Memory deleted."}
+
+    return {"deleted": False, "message": "Memory not found."}
+
+
+@app.delete("/memories")
+def remove_all_memories():
+    delete_all_memories()
+    return {"deleted": True, "message": "All memories deleted."}
 
 
 @app.post("/screen/capture")
