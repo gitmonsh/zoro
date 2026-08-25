@@ -89,6 +89,7 @@ Use light Gen Z phrasing sometimes, but do not overdo slang.
 Do not talk like a pirate.
 Do not pretend to access tools unless the app already did it.
 Keep answers short unless the user asks for detail.
+Use the user's saved memories when they are relevant.
 Be useful first, casual second.
 """
 
@@ -100,8 +101,41 @@ def speak(text: str):
         print(f"Zoro would say: {text}")
 
 
+def load_memories():
+    if not MEMORY_FILE.exists():
+        return []
+
+    with open(MEMORY_FILE, "r") as file:
+        content = file.read().strip()
+
+    if not content:
+        return []
+
+    return json.loads(content)
+
+
+def format_memories_for_prompt():
+    memories = load_memories()
+
+    if not memories:
+        return "No saved memories."
+
+    memory_lines = [f"- {memory['text']}" for memory in memories]
+    return "\n".join(memory_lines)
+
+
 def ask_local_llm(question_text: str):
-    prompt = f"{ZORO_SYSTEM_PROMPT}\n\nUser: {question_text}\nZoro:"
+    memories_text = format_memories_for_prompt()
+
+    prompt = f"""
+{ZORO_SYSTEM_PROMPT}
+
+Saved memories:
+{memories_text}
+
+User: {question_text}
+Zoro:
+"""
 
     payload = {
         "model": OLLAMA_MODEL,
@@ -127,19 +161,6 @@ def ask_local_llm(question_text: str):
             "I can't reach my local LLM right now. Make sure Ollama is running with "
             "`ollama serve`."
         )
-
-
-def load_memories():
-    if not MEMORY_FILE.exists():
-        return []
-
-    with open(MEMORY_FILE, "r") as file:
-        content = file.read().strip()
-
-    if not content:
-        return []
-
-    return json.loads(content)
 
 
 def save_memories(memories):
