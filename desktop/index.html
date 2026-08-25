@@ -5,7 +5,6 @@
   <style>
     :root {
       --bg: #edf1f7;
-      --panel: #ffffff;
       --text: #17202a;
       --muted: #526172;
       --blue: #2f7cf6;
@@ -39,11 +38,8 @@
       height: 74px;
       border-radius: 50%;
       border: none;
-      background:
-        radial-gradient(circle at 35% 28%, #79aaff, var(--blue) 55%, #1651c8);
-      box-shadow:
-        0 18px 45px rgba(47, 124, 246, 0.35),
-        0 0 0 10px rgba(47, 124, 246, 0.10);
+      background: radial-gradient(circle at 35% 28%, #79aaff, var(--blue) 55%, #1651c8);
+      box-shadow: 0 18px 45px rgba(47, 124, 246, 0.35), 0 0 0 10px rgba(47, 124, 246, 0.10);
       cursor: pointer;
       z-index: 10;
       transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -51,9 +47,7 @@
 
     .bubble:hover {
       transform: translateY(-4px) scale(1.04);
-      box-shadow:
-        0 22px 60px rgba(47, 124, 246, 0.45),
-        0 0 0 12px rgba(47, 124, 246, 0.12);
+      box-shadow: 0 22px 60px rgba(47, 124, 246, 0.45), 0 0 0 12px rgba(47, 124, 246, 0.12);
     }
 
     .bubble::before,
@@ -106,8 +100,7 @@
       width: 44px;
       height: 44px;
       border-radius: 50%;
-      background:
-        radial-gradient(circle at 35% 28%, #79aaff, var(--blue) 55%, #1651c8);
+      background: radial-gradient(circle at 35% 28%, #79aaff, var(--blue) 55%, #1651c8);
       box-shadow: 0 0 0 8px rgba(47, 124, 246, 0.12);
       flex: 0 0 auto;
     }
@@ -302,6 +295,16 @@
 
       <div class="answer" id="answer"></div>
 
+      <div class="section-title">Activity</div>
+      <div class="button-row">
+        <button onclick="showActions()">Show Activity</button>
+        <button class="danger-button" onclick="clearActions()">Clear Activity</button>
+      </div>
+
+      <div class="memories" id="actions">
+        No activity loaded yet.
+      </div>
+
       <div class="section-title">Memory</div>
       <div class="button-row">
         <button onclick="showMemories()">Show</button>
@@ -319,6 +322,37 @@
 
     function toggleAssistant() {
       document.getElementById("assistant").classList.toggle("open");
+    }
+
+    function logAction(text) {
+      const actions = JSON.parse(localStorage.getItem("zoroActions") || "[]");
+
+      actions.unshift({
+        text,
+        time: new Date().toLocaleString()
+      });
+
+      localStorage.setItem("zoroActions", JSON.stringify(actions.slice(0, 50)));
+      showActions();
+    }
+
+    function showActions() {
+      const actions = JSON.parse(localStorage.getItem("zoroActions") || "[]");
+      const actionsBox = document.getElementById("actions");
+
+      if (actions.length === 0) {
+        actionsBox.innerText = "No activity yet.";
+        return;
+      }
+
+      actionsBox.innerText = actions
+        .map(action => `- ${action.time}: ${action.text}`)
+        .join("\n");
+    }
+
+    function clearActions() {
+      localStorage.removeItem("zoroActions");
+      showActions();
     }
 
     function setOrbState(state) {
@@ -344,16 +378,19 @@
     async function startZoro() {
       await fetch(`${API}/start`, { method: "POST" });
       updateStatus();
+      logAction("Started Zoro");
     }
 
     async function wakeZoro() {
       await fetch(`${API}/wake`, { method: "POST" });
       updateStatus();
+      logAction("Woke Zoro");
     }
 
     async function stopZoro() {
       await fetch(`${API}/stop`, { method: "POST" });
       updateStatus();
+      logAction("Stopped Zoro");
     }
 
     async function askZoro() {
@@ -378,6 +415,7 @@
       document.getElementById("answer").innerText = data.answer;
       updateStatus();
       showMemories();
+      logAction(`Asked: ${question}`);
     }
 
     async function showMemories() {
@@ -419,6 +457,7 @@
       });
 
       showMemories();
+      logAction(`Deleted memory #${memoryId}`);
     }
 
     async function deleteAllMemories() {
@@ -433,6 +472,7 @@
       });
 
       showMemories();
+      logAction("Deleted all memories");
     }
 
     function startVoiceInput() {
@@ -454,6 +494,7 @@
         "Voice: listening...";
 
       setOrbState("conversation");
+      logAction("Started voice input");
 
       recognition.start();
 
@@ -464,12 +505,14 @@
         document.getElementById("voiceStatus").innerText =
           `Voice: heard "${transcript}"`;
 
+        logAction(`Heard voice: ${transcript}`);
         askZoro();
       };
 
       recognition.onerror = function(event) {
         document.getElementById("voiceStatus").innerText =
           `Voice: error - ${event.error}`;
+        logAction(`Voice error: ${event.error}`);
       };
 
       recognition.onend = function() {
@@ -486,6 +529,7 @@
 
     updateStatus();
     showMemories();
+    showActions();
   </script>
 </body>
 </html>
